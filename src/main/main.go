@@ -14,7 +14,7 @@ const (
 	endpoint = "http://api.openweathermap.org/data/2.5"
 	apiKey   = "42cf266142d52481c3e95edb22cad945"
 
-	sleepTime = 50 * time.Millisecond
+	sleepTime = 250 * time.Millisecond
 )
 
 var (
