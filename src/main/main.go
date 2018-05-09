@@ -15,6 +15,12 @@ const (
 	apiKey   = "42cf266142d52481c3e95edb22cad945"
 
 	sleepTime = 250 * time.Millisecond
+
+	idKey   = "id"
+	unitKey = "units"
+	langKey = "lang"
+
+	defaultUnit = "metric"
 )
 
 var (
@@ -32,14 +38,6 @@ func newPool(addr string) *redis.Pool {
 }
 
 func forecast(w http.ResponseWriter, r *http.Request) {
-	const (
-		idKey   = "id"
-		unitKey = "units"
-		langKey = "lang"
-
-		defaultUnit = "metric"
-	)
-
 	id := r.URL.Query().Get(idKey)
 	if len(id) == 0 {
 		status := http.StatusBadRequest
@@ -80,6 +78,10 @@ func forecast(w http.ResponseWriter, r *http.Request) {
 		defer resp.Body.Close()
 
 		res, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			writeErr(w, http.StatusNotFound, err)
+			return
+		}
 
 		ttl := 3 * 60 * 60
 		_, err = conn.Do("SET", id, res, "EX", ttl)
@@ -106,6 +108,40 @@ func forecast(w http.ResponseWriter, r *http.Request) {
 	w.Write(res)
 }
 
+func find(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	if len(q) == 0 {
+		status := http.StatusBadRequest
+		http.Error(w, http.StatusText(status), status)
+		return
+	}
+
+	unit := r.URL.Query().Get(unitKey)
+	if len(unit) == 0 {
+		unit = defaultUnit
+	}
+
+	lang := r.URL.Query().Get(langKey)
+
+	client := http.Client{}
+	url := fmt.Sprintf("%s/find?q=%s&units=%s&lang=%s&APPID=%s", endpoint, q, unit, lang, apiKey)
+	resp, err := client.Get(url)
+	if err != nil {
+		writeErr(w, http.StatusNotFound, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	res, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		writeErr(w, http.StatusNotFound, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(res)
+}
+
 func writeErr(w http.ResponseWriter, code int, err error) {
 	log.Print(err)
 	http.Error(w, http.StatusText(code), code)
@@ -116,6 +152,7 @@ func main() {
 	defer pool.Close()
 
 	http.HandleFunc("/forecast", forecast)
+	http.HandleFunc("/find", find)
 
 	port := "8080"
 	log.Printf("Service run on localhost:%s", port)
