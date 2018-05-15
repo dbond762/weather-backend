@@ -25,10 +25,14 @@
 #   unused-packages = true
 
 
-[[constraint]]
-  name = "github.com/garyburd/redigo"
-  version = "1.6.0"
-
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  name = "github.com/gomodule/redigo"
+  version = "2.0.0"
+
+[[constraint]]
+  name = "github.com/labstack/echo"
+  version = "3.3.5"
